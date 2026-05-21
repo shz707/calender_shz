@@ -306,7 +306,7 @@ commentForm.addEventListener('submit', async (e) => {
             await logHistory('added', `"${name}" added a comment on ${selectedDateStr}`);
         } catch (error) {
             console.error("Error adding comment: ", error);
-            alert("Error adding comment. See console.");
+            alert("Supabase Error: " + (error.message || JSON.stringify(error)));
         }
     } else {
         // Local Fallback
@@ -345,7 +345,7 @@ async function deleteComment(comment) {
             await logHistory('deleted', `"${comment.name}"'s comment on ${comment.date} was deleted`);
         } catch (error) {
             console.error("Error deleting comment: ", error);
-            alert("Error deleting comment. See console.");
+            alert("Supabase Error: " + (error.message || JSON.stringify(error)));
         }
     } else {
         // Local Fallback
