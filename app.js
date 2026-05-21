@@ -1,8 +1,8 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
 // TODO: Replace with your Supabase configuration
-const SUPABASE_URL = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoaGZrYmJseHpoeWVrdGZyd25yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzkyMjAsImV4cCI6MjA5NDk1NTIyMH0.xe65rwNDCf19Wp34SXzKNR7MRND-STbYi8kK2Bwqd7k'; // e.g., 'https://xyzcompany.supabase.co'
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoaGZrYmJseHpoeWVrdGZyd25yIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTM3OTIyMCwiZXhwIjoyMDk0OTU1MjIwfQ.lqXv9cD9kp4cIjA-wtOtkNFmA5EzjWIdNL8lYk3QoCY'; // e.g., 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+const SUPABASE_URL = 'https://hhhfkbblxzhwektfrwnr.supabase.co'; // e.g., 'https://xyzcompany.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoaGZrYmJseHpoeWVrdGZyd25yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzkyMjAsImV4cCI6MjA5NDk1NTIyMH0.xe65rwNDCf19Wp34SXzKNR7MRND-STbYi8kK2Bwqd7k'; // e.g., 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
 
 // Initialize Supabase only if config is provided
 let supabase = null;
