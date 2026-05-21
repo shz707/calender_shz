@@ -90,10 +90,10 @@ if (!('closedBy' in HTMLDialogElement.prototype)) {
 closeDialogBtn.addEventListener('click', () => dialog.close());
 closeHistoryBtn.addEventListener('click', () => historyDialog.close());
 
-// Store comments data locally
-let commentsData = {}; // Format: { "YYYY-MM-DD": [{id, name, text, color, timestamp}] }
+// Store comments data locally with localStorage persistence for fallback mode
+let commentsData = JSON.parse(localStorage.getItem('fallback_comments')) || {}; 
 // Store history locally
-let historyData = [];
+let historyData = JSON.parse(localStorage.getItem('fallback_history')) || [];
 
 function renderCalendar() {
     calendarGrid.innerHTML = '';
@@ -322,6 +322,9 @@ commentForm.addEventListener('submit', async (e) => {
             description: `"${name}" added a comment on ${selectedDateStr}`
         });
 
+        localStorage.setItem('fallback_comments', JSON.stringify(commentsData));
+        localStorage.setItem('fallback_history', JSON.stringify(historyData));
+
         renderCalendar();
         renderCommentsList(selectedDateStr);
     }
@@ -355,6 +358,9 @@ async function deleteComment(comment) {
             month: comment.date.substring(0, 7),
             description: `"${comment.name}"'s comment on ${comment.date} was deleted`
         });
+
+        localStorage.setItem('fallback_comments', JSON.stringify(commentsData));
+        localStorage.setItem('fallback_history', JSON.stringify(historyData));
 
         renderCalendar();
         renderCommentsList(selectedDateStr);
