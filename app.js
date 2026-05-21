@@ -1,23 +1,15 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, where } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-// TODO: Replace with your Firebase configuration
-const firebaseConfig = {
-  // apiKey: "YOUR_API_KEY",
-  // authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  // projectId: "YOUR_PROJECT_ID",
-  // storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  // messagingSenderId: "...",
-  // appId: "..."
-};
+// TODO: Replace with your Supabase configuration
+const SUPABASE_URL = ''; // e.g., 'https://xyzcompany.supabase.co'
+const SUPABASE_ANON_KEY = ''; // e.g., 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
 
-// Initialize Firebase only if config is provided
-let db = null;
-if (firebaseConfig.projectId) {
-    const app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
+// Initialize Supabase only if config is provided
+let supabase = null;
+if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 } else {
-    console.warn("Firebase configuration is missing. Comments will not persist.");
+    console.warn("Supabase configuration is missing. Comments will not persist.");
 }
 
 // Calendar State
@@ -284,14 +276,14 @@ commentForm.addEventListener('submit', async (e) => {
         timestamp: Date.now()
     };
 
-    if (db) {
+    if (supabase) {
         try {
-            const docRef = await addDoc(collection(db, "comments"), newComment);
-            // Log history
+            const { error } = await supabase.from('comments').insert([newComment]);
+            if (error) throw error;
             await logHistory('added', `"${name}" added a comment on ${selectedDateStr}`);
         } catch (error) {
             console.error("Error adding comment: ", error);
-            alert("Error adding comment.");
+            alert("Error adding comment. See console.");
         }
     } else {
         // Local Fallback
@@ -320,13 +312,14 @@ commentForm.addEventListener('submit', async (e) => {
 async function deleteComment(comment) {
     if (!confirm("Are you sure you want to delete this comment?")) return;
 
-    if (db) {
+    if (supabase) {
         try {
-            await deleteDoc(doc(db, "comments", comment.id));
+            const { error } = await supabase.from('comments').delete().eq('id', comment.id);
+            if (error) throw error;
             await logHistory('deleted', `"${comment.name}"'s comment on ${comment.date} was deleted`);
         } catch (error) {
             console.error("Error deleting comment: ", error);
-            alert("Error deleting comment.");
+            alert("Error deleting comment. See console.");
         }
     } else {
         // Local Fallback
@@ -345,16 +338,16 @@ async function deleteComment(comment) {
     }
 }
 
-// Log History (Firestore)
+// Log History (Supabase)
 async function logHistory(action, description) {
-    if (!db) return;
+    if (!supabase) return;
     try {
-        await addDoc(collection(db, "history"), {
+        await supabase.from('history').insert([{
             action: action,
             timestamp: Date.now(),
             month: currentMonthYearStr,
             description: description
-        });
+        }]);
     } catch (e) {
         console.error("Failed to log history: ", e);
     }
@@ -362,7 +355,6 @@ async function logHistory(action, description) {
 
 // Export Data Logic
 exportDataBtn.addEventListener('click', () => {
-    // Collect comments for the current month
     let exportText = `=== Shared Calendar Data Export ===\nMonth: ${monthYearDisplay.textContent}\n\n`;
     
     exportText += `--- COMMENTS ---\n`;
@@ -390,7 +382,6 @@ exportDataBtn.addEventListener('click', () => {
         });
     }
 
-    // Create and download file
     const blob = new Blob([exportText], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -403,45 +394,55 @@ exportDataBtn.addEventListener('click', () => {
 });
 
 
-// Firebase Listeners
-function setupFirebaseListeners() {
-    if (!db) return;
+// Supabase Listeners & Initialization
+async function setupSupabaseListeners() {
+    if (!supabase) return;
 
-    // Comments Listener
-    const qComments = query(collection(db, "comments"), orderBy("timestamp", "asc"));
-    onSnapshot(qComments, (snapshot) => {
+    // 1. Initial Fetch
+    const { data: initialComments, error: commentsErr } = await supabase.from('comments').select('*');
+    if (!commentsErr && initialComments) {
         commentsData = {};
-        snapshot.forEach((doc) => {
-            const data = doc.data();
-            data.id = doc.id; // Store firestore document ID
-            if (!commentsData[data.date]) {
-                commentsData[data.date] = [];
-            }
+        initialComments.forEach(data => {
+            if (!commentsData[data.date]) commentsData[data.date] = [];
             commentsData[data.date].push(data);
         });
-
         renderCalendar();
-        if (dialog.open && selectedDateStr) {
-            renderCommentsList(selectedDateStr);
-        }
-    });
+        if (dialog.open && selectedDateStr) renderCommentsList(selectedDateStr);
+    }
 
-    // History Listener
-    const qHistory = query(collection(db, "history"), orderBy("timestamp", "desc"));
-    onSnapshot(qHistory, (snapshot) => {
-        historyData = [];
-        snapshot.forEach((doc) => {
-            const data = doc.data();
-            data.id = doc.id;
-            historyData.push(data);
-        });
+    const { data: initialHistory, error: historyErr } = await supabase.from('history').select('*').order('timestamp', { ascending: false });
+    if (!historyErr && initialHistory) {
+        historyData = initialHistory;
+        if (historyDialog.open) renderHistoryList();
+    }
 
-        if (historyDialog.open) {
-            renderHistoryList();
-        }
-    });
+    // 2. Setup Realtime Subscriptions
+    supabase.channel('custom-all-channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, (payload) => {
+          if (payload.eventType === 'INSERT') {
+              const data = payload.new;
+              if (!commentsData[data.date]) commentsData[data.date] = [];
+              if (!commentsData[data.date].find(c => c.id === data.id)) {
+                  commentsData[data.date].push(data);
+              }
+          } else if (payload.eventType === 'DELETE') {
+              const deletedId = payload.old.id;
+              Object.keys(commentsData).forEach(date => {
+                  commentsData[date] = commentsData[date].filter(c => c.id !== deletedId);
+              });
+          }
+          renderCalendar();
+          if (dialog.open && selectedDateStr) renderCommentsList(selectedDateStr);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'history' }, (payload) => {
+          if (payload.eventType === 'INSERT') {
+              historyData.push(payload.new);
+          }
+          if (historyDialog.open) renderHistoryList();
+      })
+      .subscribe();
 }
 
 // Init
 renderCalendar();
-setupFirebaseListeners();
+setupSupabaseListeners();
