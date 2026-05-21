@@ -1,8 +1,8 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
 // TODO: Replace with your Supabase configuration
-const SUPABASE_URL = 'https://hhhfkbblxzhyektfrwnr.supabase.co'; // e.g., 'https://xyzcompany.supabase.co'
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoaGZrYmJseHpoeWVrdGZyd25yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzkyMjAsImV4cCI6MjA5NDk1NTIyMH0.xe65rwNDCf19Wp34SXzKNR7MRND-STbYi8kK2Bwqd7k'; // e.g., 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+const SUPABASE_URL = 'https://hhhfkbblxzhwektfrwnr.supabase.co'; // e.g., 'https://xyzcompany.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoaGZrYmJseHpoeWVrdGZyd25yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzkyMjAsImV4cCI6MjA5NDk1NTIyMH0.xe65rwNDCf19Wp34SXzKNR7MRND-STbYi8kK2Bwqd7k';
 
 // Initialize Supabase only if config is provided
 let supabase = null;
@@ -50,6 +50,23 @@ themeSelector.addEventListener('change', (e) => {
     localStorage.setItem('calendar-theme', e.target.value);
 });
 
+// Update Background Image based on month
+function updateMonthBackground(monthIndex) {
+    const paddedMonth = String(monthIndex + 1).padStart(2, '0');
+    const imagePath = `assets/${paddedMonth}.jpg`;
+    
+    const img = new Image();
+    img.onload = function() {
+        // Image exists, set it as body background
+        document.body.style.backgroundImage = `url('${imagePath}')`;
+    };
+    img.onerror = function() {
+        // Image does not exist, revert to the progressive gradient (handled by CSS variables)
+        document.body.style.backgroundImage = '';
+    };
+    img.src = imagePath;
+}
+
 // Fallback for light dismiss if closedby is not supported
 if (!('closedBy' in HTMLDialogElement.prototype)) {
   const handleLightDismiss = (dialogEl) => {
@@ -91,6 +108,8 @@ function renderCalendar() {
     currentMonthYearStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
     monthYearDisplay.textContent = `${monthNames[currentMonth]} ${currentYear}`;
 
+    updateMonthBackground(currentMonth);
+
     // Fill in empty slots before the first day
     for (let i = 0; i < startDayIndex; i++) {
         const emptyDiv = document.createElement('div');
@@ -120,19 +139,23 @@ function renderCalendar() {
         if (commentsData[dateStr] && commentsData[dateStr].length > 0) {
             const indicator = document.createElement('div');
             
-            // Logic for color: Red > Yellow > Green/Default
+            // Logic for color: Red > Yellow > Blue > Green/Default
             let hasRed = false;
             let hasYellow = false;
+            let hasBlue = false;
             
             commentsData[dateStr].forEach(c => {
                 if (c.color === 'red') hasRed = true;
                 else if (c.color === 'yellow') hasYellow = true;
+                else if (c.color === 'blue') hasBlue = true;
             });
 
             if (hasRed) {
                 indicator.className = 'comment-indicator indicator-red';
             } else if (hasYellow) {
                 indicator.className = 'comment-indicator indicator-yellow';
+            } else if (hasBlue) {
+                indicator.className = 'comment-indicator indicator-blue';
             } else {
                 indicator.className = 'comment-indicator indicator-green';
             }

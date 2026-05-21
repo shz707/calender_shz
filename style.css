@@ -52,12 +52,15 @@ body.theme-light-red {
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     background-attachment: fixed;
     color: var(--text-main);
     display: flex;
     justify-content: center;
     padding: 20px;
-    transition: background 0.5s ease;
+    transition: background 0.5s ease, background-image 0.5s ease;
 }
 
 .calendar-app {
@@ -200,6 +203,7 @@ body {
 
 /* Indicator Colors */
 .indicator-default { background-color: var(--theme-primary); }
+.indicator-blue { background-color: #2196f3; }
 .indicator-green { background-color: #4caf50; }
 .indicator-yellow { background-color: #ffc107; color: #000; }
 .indicator-red { background-color: #f44336; }
@@ -223,13 +227,42 @@ body {
 .history-btn-container button:hover {
     background-color: var(--theme-primary);
     color: #fff;
-    /* Yellow text needs dark text color usually, but keeping white for buttons is fine if border matches */
 }
 
 body.theme-light-yellow .history-btn-container button:hover,
 body.theme-light-yellow .app-toolbar button:hover {
     color: #000;
 }
+
+/* Legend Styles */
+.legend-container {
+    padding: 15px 20px;
+    background-color: var(--calendar-bg);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    font-size: 0.9rem;
+    color: var(--text-main);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.legend-color {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    display: inline-block;
+}
+.legend-color.blue { background-color: #2196f3; }
+.legend-color.green { background-color: #4caf50; }
+.legend-color.yellow { background-color: #ffc107; }
+.legend-color.red { background-color: #f44336; }
 
 /* Dialog Styles */
 dialog {
@@ -302,16 +335,18 @@ dialog::backdrop {
 }
 
 /* Color Dropdown Options */
+.comment-item.color-blue {
+    background-color: rgba(33, 150, 243, 0.15);
+    border-color: rgba(33, 150, 243, 0.3);
+}
 .comment-item.color-green {
     background-color: rgba(76, 175, 80, 0.15);
     border-color: rgba(76, 175, 80, 0.3);
 }
-
 .comment-item.color-yellow {
     background-color: rgba(255, 235, 59, 0.15);
     border-color: rgba(255, 235, 59, 0.3);
 }
-
 .comment-item.color-red {
     background-color: rgba(244, 67, 54, 0.15);
     border-color: rgba(244, 67, 54, 0.3);

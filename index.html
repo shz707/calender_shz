@@ -36,6 +36,13 @@
         <div class="history-btn-container">
             <button id="view-history-btn">View Monthly History</button>
         </div>
+
+        <div class="legend-container">
+            <div class="legend-item"><span class="legend-color blue"></span> Holiday</div>
+            <div class="legend-item"><span class="legend-color green"></span> Available</div>
+            <div class="legend-item"><span class="legend-color yellow"></span> Maybe available</div>
+            <div class="legend-item"><span class="legend-color red"></span> Not available</div>
+        </div>
     </div>
 
     <!-- Dialog for Comments using closedby="any" -->
@@ -55,6 +62,7 @@
                 <textarea id="comment-text" placeholder="Add a comment..." required></textarea>
                 <select id="comment-color">
                     <option value="none">Default Color</option>
+                    <option value="blue">Blue</option>
                     <option value="green">Green</option>
                     <option value="yellow">Yellow</option>
                     <option value="red">Red</option>
