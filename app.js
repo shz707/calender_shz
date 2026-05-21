@@ -1,15 +1,15 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
 // TODO: Replace with your Supabase configuration
-const SUPABASE_URL = 'https://hhhfkbblxzhyektfrwnr.supabase.co'; // e.g., 'https://xyzcompany.supabase.co'
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoaGZrYmJseHpoeWVrdGZyd25yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzkyMjAsImV4cCI6MjA5NDk1NTIyMH0.xe65rwNDCf19Wp34SXzKNR7MRND-STbYi8kK2Bwqd7k'; // e.g., 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+const SUPABASE_URL = ''; // e.g., 'https://xyzcompany.supabase.co'
+const SUPABASE_ANON_KEY = ''; // e.g., 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
 
 // Initialize Supabase only if config is provided
 let supabase = null;
 if (SUPABASE_URL && SUPABASE_ANON_KEY) {
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 } else {
-    console.warn("Supabase configuration is missing. Comments will not persist.");
+    alert("CRITICAL ERROR: Supabase configuration is missing. Please add your SUPABASE_URL and SUPABASE_ANON_KEY to app.js.");
 }
 
 // Calendar State
@@ -57,11 +57,9 @@ function updateMonthBackground(monthIndex) {
     
     const img = new Image();
     img.onload = function() {
-        // Image exists, set it as body background
         document.body.style.backgroundImage = `url('${imagePath}')`;
     };
     img.onerror = function() {
-        // Image does not exist, revert to the progressive gradient (handled by CSS variables)
         document.body.style.backgroundImage = '';
     };
     img.src = imagePath;
@@ -90,10 +88,9 @@ if (!('closedBy' in HTMLDialogElement.prototype)) {
 closeDialogBtn.addEventListener('click', () => dialog.close());
 closeHistoryBtn.addEventListener('click', () => historyDialog.close());
 
-// Store comments data locally with localStorage persistence for fallback mode
-let commentsData = JSON.parse(localStorage.getItem('fallback_comments')) || {}; 
-// Store history locally
-let historyData = JSON.parse(localStorage.getItem('fallback_history')) || [];
+// Store fetched Supabase data in memory for rendering ONLY
+let commentsData = {}; 
+let historyData = [];
 
 function renderCalendar() {
     calendarGrid.innerHTML = '';
@@ -281,6 +278,11 @@ commentForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!selectedDateStr) return;
 
+    if (!supabase) {
+        alert("CRITICAL ERROR: Supabase is not configured. Cannot save comment.");
+        return;
+    }
+
     const nameInput = document.getElementById('comment-name');
     const textInput = document.getElementById('comment-text');
     const colorInput = document.getElementById('comment-color');
@@ -299,71 +301,37 @@ commentForm.addEventListener('submit', async (e) => {
         timestamp: Date.now()
     };
 
-    if (supabase) {
-        try {
-            const { error } = await supabase.from('comments').insert([newComment]);
-            if (error) throw error;
-            await logHistory('added', `"${name}" added a comment on ${selectedDateStr}`);
-        } catch (error) {
-            console.error("Error adding comment: ", error);
-            alert("Supabase Error: " + (error.message || JSON.stringify(error)));
-        }
-    } else {
-        // Local Fallback
-        newComment.id = 'local_' + Date.now();
-        if (!commentsData[selectedDateStr]) commentsData[selectedDateStr] = [];
-        commentsData[selectedDateStr].push(newComment);
+    try {
+        const { error } = await supabase.from('comments').insert([newComment]);
+        if (error) throw error;
+        await logHistory('added', `"${name}" added a comment on ${selectedDateStr}`);
         
-        historyData.push({
-            id: 'hist_' + Date.now(),
-            action: 'added',
-            timestamp: Date.now(),
-            month: selectedDateStr.substring(0, 7),
-            description: `"${name}" added a comment on ${selectedDateStr}`
-        });
-
-        localStorage.setItem('fallback_comments', JSON.stringify(commentsData));
-        localStorage.setItem('fallback_history', JSON.stringify(historyData));
-
-        renderCalendar();
-        renderCommentsList(selectedDateStr);
+        // Reset form only on success
+        nameInput.value = '';
+        textInput.value = '';
+        colorInput.value = 'none';
+    } catch (error) {
+        console.error("Error adding comment: ", error);
+        alert("Database Error (Add Comment): " + (error.message || JSON.stringify(error)));
     }
-
-    nameInput.value = '';
-    textInput.value = '';
-    colorInput.value = 'none';
 });
 
 // Delete Comment
 async function deleteComment(comment) {
     if (!confirm("Are you sure you want to delete this comment?")) return;
 
-    if (supabase) {
-        try {
-            const { error } = await supabase.from('comments').delete().eq('id', comment.id);
-            if (error) throw error;
-            await logHistory('deleted', `"${comment.name}"'s comment on ${comment.date} was deleted`);
-        } catch (error) {
-            console.error("Error deleting comment: ", error);
-            alert("Supabase Error: " + (error.message || JSON.stringify(error)));
-        }
-    } else {
-        // Local Fallback
-        commentsData[comment.date] = commentsData[comment.date].filter(c => c.id !== comment.id);
-        
-        historyData.push({
-            id: 'hist_' + Date.now(),
-            action: 'deleted',
-            timestamp: Date.now(),
-            month: comment.date.substring(0, 7),
-            description: `"${comment.name}"'s comment on ${comment.date} was deleted`
-        });
+    if (!supabase) {
+        alert("CRITICAL ERROR: Supabase is not configured. Cannot delete comment.");
+        return;
+    }
 
-        localStorage.setItem('fallback_comments', JSON.stringify(commentsData));
-        localStorage.setItem('fallback_history', JSON.stringify(historyData));
-
-        renderCalendar();
-        renderCommentsList(selectedDateStr);
+    try {
+        const { error } = await supabase.from('comments').delete().eq('id', comment.id);
+        if (error) throw error;
+        await logHistory('deleted', `"${comment.name}"'s comment on ${comment.date} was deleted`);
+    } catch (error) {
+        console.error("Error deleting comment: ", error);
+        alert("Database Error (Delete Comment): " + (error.message || JSON.stringify(error)));
     }
 }
 
@@ -371,14 +339,16 @@ async function deleteComment(comment) {
 async function logHistory(action, description) {
     if (!supabase) return;
     try {
-        await supabase.from('history').insert([{
+        const { error } = await supabase.from('history').insert([{
             action: action,
             timestamp: Date.now(),
             month: currentMonthYearStr,
             description: description
         }]);
-    } catch (e) {
-        console.error("Failed to log history: ", e);
+        if (error) throw error;
+    } catch (error) {
+        console.error("Failed to log history: ", error);
+        alert("Database Error (Log History): " + (error.message || JSON.stringify(error)));
     }
 }
 
@@ -428,21 +398,33 @@ async function setupSupabaseListeners() {
     if (!supabase) return;
 
     // 1. Initial Fetch
-    const { data: initialComments, error: commentsErr } = await supabase.from('comments').select('*');
-    if (!commentsErr && initialComments) {
+    try {
+        const { data: initialComments, error: commentsErr } = await supabase.from('comments').select('*');
+        if (commentsErr) throw commentsErr;
+        
         commentsData = {};
-        initialComments.forEach(data => {
-            if (!commentsData[data.date]) commentsData[data.date] = [];
-            commentsData[data.date].push(data);
-        });
+        if (initialComments) {
+            initialComments.forEach(data => {
+                if (!commentsData[data.date]) commentsData[data.date] = [];
+                commentsData[data.date].push(data);
+            });
+        }
         renderCalendar();
         if (dialog.open && selectedDateStr) renderCommentsList(selectedDateStr);
+    } catch (error) {
+        alert("Database Error (Fetch Comments): " + (error.message || JSON.stringify(error)));
     }
 
-    const { data: initialHistory, error: historyErr } = await supabase.from('history').select('*').order('timestamp', { ascending: false });
-    if (!historyErr && initialHistory) {
-        historyData = initialHistory;
-        if (historyDialog.open) renderHistoryList();
+    try {
+        const { data: initialHistory, error: historyErr } = await supabase.from('history').select('*').order('timestamp', { ascending: false });
+        if (historyErr) throw historyErr;
+        
+        if (initialHistory) {
+            historyData = initialHistory;
+            if (historyDialog.open) renderHistoryList();
+        }
+    } catch (error) {
+        alert("Database Error (Fetch History): " + (error.message || JSON.stringify(error)));
     }
 
     // 2. Setup Realtime Subscriptions
@@ -469,7 +451,12 @@ async function setupSupabaseListeners() {
           }
           if (historyDialog.open) renderHistoryList();
       })
-      .subscribe();
+      .subscribe((status, err) => {
+          if (err) {
+              console.error("Subscription Error:", err);
+              // alert("Database Error (Realtime Sync): " + (err.message || JSON.stringify(err)));
+          }
+      });
 }
 
 // Init
