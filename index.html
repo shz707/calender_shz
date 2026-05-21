@@ -6,8 +6,19 @@
     <title>Shared Calendar</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="theme-light-green">
     <div class="calendar-app">
+        <div class="app-toolbar">
+            <select id="theme-selector">
+                <option value="theme-light-green">Theme: Light Green</option>
+                <option value="theme-purple">Theme: Purple</option>
+                <option value="theme-light-blue">Theme: Light Blue</option>
+                <option value="theme-light-yellow">Theme: Light Yellow</option>
+                <option value="theme-light-red">Theme: Light Red</option>
+            </select>
+            <button id="export-data-btn">Export Data (.txt)</button>
+        </div>
+
         <header class="calendar-header">
             <button id="prev-month">&lt;</button>
             <h1 id="month-year-display">Month Year</h1>

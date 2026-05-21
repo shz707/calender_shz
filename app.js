@@ -45,6 +45,19 @@ const closeHistoryBtn = document.getElementById('close-history');
 const historyList = document.getElementById('history-list');
 const viewHistoryBtn = document.getElementById('view-history-btn');
 
+const themeSelector = document.getElementById('theme-selector');
+const exportDataBtn = document.getElementById('export-data-btn');
+
+// Theme Management
+const savedTheme = localStorage.getItem('calendar-theme') || 'theme-light-green';
+document.body.className = savedTheme;
+themeSelector.value = savedTheme;
+
+themeSelector.addEventListener('change', (e) => {
+    document.body.className = e.target.value;
+    localStorage.setItem('calendar-theme', e.target.value);
+});
+
 // Fallback for light dismiss if closedby is not supported
 if (!('closedBy' in HTMLDialogElement.prototype)) {
   const handleLightDismiss = (dialogEl) => {
@@ -114,7 +127,24 @@ function renderCalendar() {
         // Render comment indicator if there are comments for this day
         if (commentsData[dateStr] && commentsData[dateStr].length > 0) {
             const indicator = document.createElement('div');
-            indicator.className = 'comment-indicator';
+            
+            // Logic for color: Red > Yellow > Green/Default
+            let hasRed = false;
+            let hasYellow = false;
+            
+            commentsData[dateStr].forEach(c => {
+                if (c.color === 'red') hasRed = true;
+                else if (c.color === 'yellow') hasYellow = true;
+            });
+
+            if (hasRed) {
+                indicator.className = 'comment-indicator indicator-red';
+            } else if (hasYellow) {
+                indicator.className = 'comment-indicator indicator-yellow';
+            } else {
+                indicator.className = 'comment-indicator indicator-green';
+            }
+
             indicator.textContent = `${commentsData[dateStr].length} comment${commentsData[dateStr].length > 1 ? 's' : ''}`;
             dayDiv.appendChild(indicator);
         }
@@ -329,6 +359,49 @@ async function logHistory(action, description) {
         console.error("Failed to log history: ", e);
     }
 }
+
+// Export Data Logic
+exportDataBtn.addEventListener('click', () => {
+    // Collect comments for the current month
+    let exportText = `=== Shared Calendar Data Export ===\nMonth: ${monthYearDisplay.textContent}\n\n`;
+    
+    exportText += `--- COMMENTS ---\n`;
+    let hasComments = false;
+    Object.keys(commentsData).forEach(date => {
+        if (date.startsWith(currentMonthYearStr)) {
+            commentsData[date].forEach(c => {
+                hasComments = true;
+                exportText += `[${date}] ${c.name} (${c.color}): ${c.text}\n`;
+            });
+        }
+    });
+    if (!hasComments) exportText += `No comments this month.\n`;
+
+    exportText += `\n--- HISTORY ---\n`;
+    const currentMonthHistory = historyData.filter(h => h.month === currentMonthYearStr);
+    currentMonthHistory.sort((a, b) => b.timestamp - a.timestamp);
+    
+    if (currentMonthHistory.length === 0) {
+        exportText += `No history logs this month.\n`;
+    } else {
+        currentMonthHistory.forEach(h => {
+            const dateStr = new Date(h.timestamp).toLocaleString();
+            exportText += `[${dateStr}] ${h.action.toUpperCase()}: ${h.description}\n`;
+        });
+    }
+
+    // Create and download file
+    const blob = new Blob([exportText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `data_${currentMonthYearStr}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+});
+
 
 // Firebase Listeners
 function setupFirebaseListeners() {
