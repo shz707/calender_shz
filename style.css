@@ -1,0 +1,263 @@
+:root {
+    --bg-color: #f8f9fa;
+    --calendar-bg: #ffffff;
+    --text-main: #333333;
+    --text-muted: #6c757d;
+    --border-color: #e0e0e0;
+    --primary-color: #1a73e8;
+    --primary-hover: #1557b0;
+    --day-hover: #f1f3f4;
+    --today-bg: #e8f0fe;
+    --today-color: #1a73e8;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+.calendar-app {
+    width: 100%;
+    max-width: 900px;
+    background-color: var(--calendar-bg);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.calendar-header h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.calendar-header button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: color 0.2s, background-color 0.2s;
+    padding: 5px 10px;
+    border-radius: 4px;
+}
+
+.calendar-header button:hover {
+    color: var(--primary-color);
+    background-color: var(--day-hover);
+}
+
+.calendar-grid-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    min-height: 500px;
+}
+
+.calendar-day {
+    border-right: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    padding: 10px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.calendar-day:nth-child(7n) {
+    border-right: none;
+}
+
+.calendar-day:hover {
+    background-color: var(--day-hover);
+}
+
+.calendar-day.empty {
+    background-color: var(--bg-color);
+    cursor: default;
+}
+
+.calendar-day.empty:hover {
+    background-color: var(--bg-color);
+}
+
+.day-number {
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+.calendar-day.today {
+    background-color: var(--today-bg);
+}
+
+.calendar-day.today .day-number {
+    color: var(--today-color);
+    font-weight: 700;
+}
+
+.comment-indicator {
+    background-color: var(--primary-color);
+    color: white;
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 10px;
+    align-self: flex-start;
+    margin-top: auto;
+}
+
+/* Dialog Styles */
+dialog {
+    margin: auto;
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    width: 90%;
+    max-width: 500px;
+    padding: 0;
+    background-color: var(--calendar-bg);
+    color: var(--text-main);
+    transition: display 0.3s allow-discrete, overlay 0.3s allow-discrete, opacity 0.3s;
+    opacity: 0;
+}
+
+dialog[open] {
+    opacity: 1;
+}
+
+/* Starting state */
+@starting-style {
+  dialog[open] {
+    opacity: 0;
+  }
+}
+
+dialog::backdrop {
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    transition: display 0.3s allow-discrete, overlay 0.3s allow-discrete, background-color 0.3s;
+}
+
+.dialog-content {
+    display: flex;
+    flex-direction: column;
+    max-height: 80vh;
+}
+
+.dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+.comments-list {
+    padding: 20px;
+    overflow-y: auto;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.comment-item {
+    background-color: var(--bg-color);
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.comment-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.comment-author {
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.comment-text {
+    word-break: break-word;
+    white-space: pre-wrap;
+}
+
+.no-comments {
+    color: var(--text-muted);
+    text-align: center;
+    font-style: italic;
+}
+
+.comment-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 20px;
+    border-top: 1px solid var(--border-color);
+    background-color: var(--bg-color);
+}
+
+.comment-form input, .comment-form textarea {
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-family: inherit;
+}
+
+.comment-form textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.comment-form button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+
+.comment-form button:hover {
+    background-color: var(--primary-hover);
+}

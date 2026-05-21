@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shared Calendar</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="calendar-app">
+        <header class="calendar-header">
+            <button id="prev-month">&lt;</button>
+            <h1 id="month-year-display">Month Year</h1>
+            <button id="next-month">&gt;</button>
+        </header>
+
+        <div class="calendar-grid-header">
+            <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+        </div>
+
+        <div id="calendar-grid" class="calendar-grid">
+            <!-- Calendar days will be injected here via JS -->
+        </div>
+    </div>
+
+    <!-- Dialog for Comments using closedby="any" -->
+    <dialog id="comment-dialog" closedby="any" aria-labelledby="dialog-title">
+        <div class="dialog-content">
+            <div class="dialog-header">
+                <h2 id="dialog-title">Comments</h2>
+                <button id="close-dialog" class="close-btn" aria-label="Close dialog">&times;</button>
+            </div>
+            
+            <div id="comments-list" class="comments-list">
+                <!-- Comments injected here -->
+            </div>
+
+            <form id="comment-form" class="comment-form">
+                <input type="text" id="comment-name" placeholder="Your Name" required>
+                <textarea id="comment-text" placeholder="Add a comment..." required></textarea>
+                <button type="submit">Post</button>
+            </form>
+        </div>
+    </dialog>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
