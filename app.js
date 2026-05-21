@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, where } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 // TODO: Replace with your Firebase configuration
 const firebaseConfig = {
@@ -25,6 +25,7 @@ let currentDate = new Date();
 let currentMonth = currentDate.getMonth();
 let currentYear = currentDate.getFullYear();
 let selectedDateStr = null;
+let currentMonthYearStr = null;
 
 // DOM Elements
 const monthYearDisplay = document.getElementById('month-year-display');
@@ -38,26 +39,39 @@ const closeDialogBtn = document.getElementById('close-dialog');
 const commentsList = document.getElementById('comments-list');
 const commentForm = document.getElementById('comment-form');
 
+const historyDialog = document.getElementById('history-dialog');
+const historyTitle = document.getElementById('history-title');
+const closeHistoryBtn = document.getElementById('close-history');
+const historyList = document.getElementById('history-list');
+const viewHistoryBtn = document.getElementById('view-history-btn');
+
 // Fallback for light dismiss if closedby is not supported
 if (!('closedBy' in HTMLDialogElement.prototype)) {
-  dialog.addEventListener('click', (event) => {
-    if (event.target !== dialog) return;
-    const rect = dialog.getBoundingClientRect();
-    const isDialogContent = (
-      rect.top <= event.clientY &&
-      event.clientY <= rect.top + rect.height &&
-      rect.left <= event.clientX &&
-      event.clientX <= rect.left + rect.width
-    );
-    if (isDialogContent) return;
-    dialog.close();
-  });
+  const handleLightDismiss = (dialogEl) => {
+    dialogEl.addEventListener('click', (event) => {
+      if (event.target !== dialogEl) return;
+      const rect = dialogEl.getBoundingClientRect();
+      const isDialogContent = (
+        rect.top <= event.clientY &&
+        event.clientY <= rect.top + rect.height &&
+        rect.left <= event.clientX &&
+        event.clientX <= rect.left + rect.width
+      );
+      if (isDialogContent) return;
+      dialogEl.close();
+    });
+  };
+  handleLightDismiss(dialog);
+  handleLightDismiss(historyDialog);
 }
 
 closeDialogBtn.addEventListener('click', () => dialog.close());
+closeHistoryBtn.addEventListener('click', () => historyDialog.close());
 
-// Store comments data locally for quick access when rendering the calendar
-let commentsData = {}; // Format: { "YYYY-MM-DD": [comment1, comment2] }
+// Store comments data locally
+let commentsData = {}; // Format: { "YYYY-MM-DD": [{id, name, text, color, timestamp}] }
+// Store history locally
+let historyData = [];
 
 function renderCalendar() {
     calendarGrid.innerHTML = '';
@@ -68,6 +82,8 @@ function renderCalendar() {
 
     const monthNames = ["January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"];
+    
+    currentMonthYearStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
     monthYearDisplay.textContent = `${monthNames[currentMonth]} ${currentYear}`;
 
     // Fill in empty slots before the first day
@@ -144,22 +160,33 @@ function renderCommentsList(dateStr) {
         return;
     }
 
-    // Sort comments by timestamp
     const sortedComments = [...dayComments].sort((a, b) => a.timestamp - b.timestamp);
 
     sortedComments.forEach(comment => {
         const item = document.createElement('div');
         item.className = 'comment-item';
+        if (comment.color && comment.color !== 'none') {
+            item.classList.add(`color-${comment.color}`);
+        }
         
-        const dateStr = comment.timestamp ? new Date(comment.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
+        const timeStr = comment.timestamp ? new Date(comment.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
         
         item.innerHTML = `
             <div class="comment-meta">
                 <span class="comment-author">${escapeHTML(comment.name)}</span>
-                <span>${dateStr}</span>
+                <span>${timeStr}</span>
             </div>
             <div class="comment-text">${escapeHTML(comment.text)}</div>
+            <button class="delete-btn" aria-label="Delete comment" data-id="${comment.id}">🗑️</button>
         `;
+
+        // Add delete listener
+        const deleteBtn = item.querySelector('.delete-btn');
+        deleteBtn.addEventListener('click', async (e) => {
+            e.stopPropagation(); // prevent triggering other clicks
+            await deleteComment(comment);
+        });
+
         commentsList.appendChild(item);
     });
 }
@@ -170,15 +197,52 @@ function escapeHTML(str) {
     return div.innerHTML;
 }
 
-// Form Submission
+// History Modal
+viewHistoryBtn.addEventListener('click', () => {
+    historyTitle.textContent = `History for ${monthYearDisplay.textContent}`;
+    renderHistoryList();
+    historyDialog.showModal();
+});
+
+function renderHistoryList() {
+    historyList.innerHTML = '';
+    
+    // Filter history for current month
+    const currentMonthHistory = historyData.filter(h => h.month === currentMonthYearStr);
+    
+    if (currentMonthHistory.length === 0) {
+        historyList.innerHTML = '<p class="no-comments">No activity this month.</p>';
+        return;
+    }
+
+    // Sort descending (newest first)
+    currentMonthHistory.sort((a, b) => b.timestamp - a.timestamp);
+
+    currentMonthHistory.forEach(log => {
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        const dateStr = new Date(log.timestamp).toLocaleString();
+        
+        item.innerHTML = `
+            <span class="history-time">${dateStr}</span>
+            <span class="history-text">${escapeHTML(log.description)}</span>
+        `;
+        historyList.appendChild(item);
+    });
+}
+
+// Add Comment
 commentForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!selectedDateStr) return;
 
     const nameInput = document.getElementById('comment-name');
     const textInput = document.getElementById('comment-text');
+    const colorInput = document.getElementById('comment-color');
+    
     const name = nameInput.value.trim();
     const text = textInput.value.trim();
+    const color = colorInput.value;
 
     if (!name || !text) return;
 
@@ -186,57 +250,125 @@ commentForm.addEventListener('submit', async (e) => {
         date: selectedDateStr,
         name: name,
         text: text,
+        color: color,
         timestamp: Date.now()
     };
 
     if (db) {
         try {
-            await addDoc(collection(db, "comments"), newComment);
-            // Form is cleared below, list updates via snapshot listener
+            const docRef = await addDoc(collection(db, "comments"), newComment);
+            // Log history
+            await logHistory('added', `"${name}" added a comment on ${selectedDateStr}`);
         } catch (error) {
             console.error("Error adding comment: ", error);
-            alert("Error adding comment. See console.");
+            alert("Error adding comment.");
         }
     } else {
-        // Fallback if no Firebase configured (local testing only)
-        if (!commentsData[selectedDateStr]) {
-            commentsData[selectedDateStr] = [];
-        }
+        // Local Fallback
+        newComment.id = 'local_' + Date.now();
+        if (!commentsData[selectedDateStr]) commentsData[selectedDateStr] = [];
         commentsData[selectedDateStr].push(newComment);
+        
+        historyData.push({
+            id: 'hist_' + Date.now(),
+            action: 'added',
+            timestamp: Date.now(),
+            month: selectedDateStr.substring(0, 7),
+            description: `"${name}" added a comment on ${selectedDateStr}`
+        });
+
         renderCalendar();
         renderCommentsList(selectedDateStr);
     }
 
     nameInput.value = '';
     textInput.value = '';
+    colorInput.value = 'none';
 });
 
-// Firebase Listener
-function setupFirebaseListener() {
+// Delete Comment
+async function deleteComment(comment) {
+    if (!confirm("Are you sure you want to delete this comment?")) return;
+
+    if (db) {
+        try {
+            await deleteDoc(doc(db, "comments", comment.id));
+            await logHistory('deleted', `"${comment.name}"'s comment on ${comment.date} was deleted`);
+        } catch (error) {
+            console.error("Error deleting comment: ", error);
+            alert("Error deleting comment.");
+        }
+    } else {
+        // Local Fallback
+        commentsData[comment.date] = commentsData[comment.date].filter(c => c.id !== comment.id);
+        
+        historyData.push({
+            id: 'hist_' + Date.now(),
+            action: 'deleted',
+            timestamp: Date.now(),
+            month: comment.date.substring(0, 7),
+            description: `"${comment.name}"'s comment on ${comment.date} was deleted`
+        });
+
+        renderCalendar();
+        renderCommentsList(selectedDateStr);
+    }
+}
+
+// Log History (Firestore)
+async function logHistory(action, description) {
+    if (!db) return;
+    try {
+        await addDoc(collection(db, "history"), {
+            action: action,
+            timestamp: Date.now(),
+            month: currentMonthYearStr,
+            description: description
+        });
+    } catch (e) {
+        console.error("Failed to log history: ", e);
+    }
+}
+
+// Firebase Listeners
+function setupFirebaseListeners() {
     if (!db) return;
 
-    const q = query(collection(db, "comments"), orderBy("timestamp", "asc"));
-    
-    onSnapshot(q, (snapshot) => {
-        // Rebuild local comments cache
+    // Comments Listener
+    const qComments = query(collection(db, "comments"), orderBy("timestamp", "asc"));
+    onSnapshot(qComments, (snapshot) => {
         commentsData = {};
-        
         snapshot.forEach((doc) => {
             const data = doc.data();
+            data.id = doc.id; // Store firestore document ID
             if (!commentsData[data.date]) {
                 commentsData[data.date] = [];
             }
             commentsData[data.date].push(data);
         });
 
-        // Re-render current view to reflect new data
         renderCalendar();
         if (dialog.open && selectedDateStr) {
             renderCommentsList(selectedDateStr);
+        }
+    });
+
+    // History Listener
+    const qHistory = query(collection(db, "history"), orderBy("timestamp", "desc"));
+    onSnapshot(qHistory, (snapshot) => {
+        historyData = [];
+        snapshot.forEach((doc) => {
+            const data = doc.data();
+            data.id = doc.id;
+            historyData.push(data);
+        });
+
+        if (historyDialog.open) {
+            renderHistoryList();
         }
     });
 }
 
 // Init
 renderCalendar();
-setupFirebaseListener();
+setupFirebaseListeners();

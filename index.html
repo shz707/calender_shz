@@ -21,6 +21,10 @@
         <div id="calendar-grid" class="calendar-grid">
             <!-- Calendar days will be injected here via JS -->
         </div>
+
+        <div class="history-btn-container">
+            <button id="view-history-btn">View Monthly History</button>
+        </div>
     </div>
 
     <!-- Dialog for Comments using closedby="any" -->
@@ -38,8 +42,28 @@
             <form id="comment-form" class="comment-form">
                 <input type="text" id="comment-name" placeholder="Your Name" required>
                 <textarea id="comment-text" placeholder="Add a comment..." required></textarea>
+                <select id="comment-color">
+                    <option value="none">Default Color</option>
+                    <option value="green">Green</option>
+                    <option value="yellow">Yellow</option>
+                    <option value="red">Red</option>
+                </select>
                 <button type="submit">Post</button>
             </form>
+        </div>
+    </dialog>
+
+    <!-- Dialog for History using closedby="any" -->
+    <dialog id="history-dialog" closedby="any" aria-labelledby="history-title">
+        <div class="dialog-content">
+            <div class="dialog-header">
+                <h2 id="history-title">History</h2>
+                <button id="close-history" class="close-btn" aria-label="Close dialog">&times;</button>
+            </div>
+            
+            <div id="history-list" class="history-list">
+                <!-- History logs injected here -->
+            </div>
         </div>
     </dialog>
 
