@@ -135,31 +135,29 @@ function renderCalendar() {
 
         // Render comment indicator if there are comments for this day
         if (commentsData[dateStr] && commentsData[dateStr].length > 0) {
-            const indicator = document.createElement('div');
-            
-            // Logic for color: Red > Yellow > Blue > Green/Default
-            let hasRed = false;
-            let hasYellow = false;
-            let hasBlue = false;
-            
+            const indicatorsContainer = document.createElement('div');
+            indicatorsContainer.className = 'indicators-container';
+
+            // Group by name and color
+            const groupCounts = {}; // format: "name|color": count
             commentsData[dateStr].forEach(c => {
-                if (c.color === 'red') hasRed = true;
-                else if (c.color === 'yellow') hasYellow = true;
-                else if (c.color === 'blue') hasBlue = true;
+                const color = (!c.color || c.color === 'none') ? 'green' : c.color;
+                const key = `${c.name}|${color}`;
+                if (!groupCounts[key]) {
+                    groupCounts[key] = { name: c.name, color: color, count: 0 };
+                }
+                groupCounts[key].count++;
+            });
+            
+            Object.values(groupCounts).forEach(group => {
+                const indicator = document.createElement('div');
+                indicator.className = `comment-indicator indicator-${group.color}`;
+                indicator.textContent = `${group.count} ${group.name}`;
+                indicator.title = `${group.count} comment(s) by ${group.name}`;
+                indicatorsContainer.appendChild(indicator);
             });
 
-            if (hasRed) {
-                indicator.className = 'comment-indicator indicator-red';
-            } else if (hasYellow) {
-                indicator.className = 'comment-indicator indicator-yellow';
-            } else if (hasBlue) {
-                indicator.className = 'comment-indicator indicator-blue';
-            } else {
-                indicator.className = 'comment-indicator indicator-green';
-            }
-
-            indicator.textContent = `${commentsData[dateStr].length} comment${commentsData[dateStr].length > 1 ? 's' : ''}`;
-            dayDiv.appendChild(indicator);
+            dayDiv.appendChild(indicatorsContainer);
         }
 
         dayDiv.addEventListener('click', () => openDayModal(dateStr, `${monthNames[currentMonth]} ${i}, ${currentYear}`));
