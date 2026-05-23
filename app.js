@@ -287,6 +287,7 @@ commentForm.addEventListener('submit', async (e) => {
     const nameInput = document.getElementById('comment-name');
     const textInput = document.getElementById('comment-text');
     const colorInput = document.getElementById('comment-color');
+    const submitBtn = commentForm.querySelector('button[type="submit"]');
     
     const name = nameInput.value.trim();
     const text = textInput.value.trim();
@@ -294,26 +295,77 @@ commentForm.addEventListener('submit', async (e) => {
 
     if (!name || !text) return;
 
+    // 1. Generate unique ID based on Name, Date, and Timestamp
+    const currentTimestamp = Date.now();
+    // Using encodeURIComponent to ensure special characters don't break the string ID
+    const customId = encodeURIComponent(`${name}_${selectedDateStr}_${currentTimestamp}`);
+
     const newComment = {
+        id: customId,
         date: selectedDateStr,
         name: name,
         text: text,
         color: color,
-        timestamp: Date.now()
+        timestamp: currentTimestamp
     };
 
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
+
     try {
-        const { error } = await supabase.from('comments').insert([newComment]);
-        if (error) throw error;
+        let isSaved = false;
+        let attempts = 0;
+        const maxAttempts = 5;
+
+        // 2 & 3. Try to add and verify in a loop
+        while (!isSaved && attempts < maxAttempts) {
+            attempts++;
+            console.log(`Attempt ${attempts} to save comment...`);
+            
+            // Try to insert (we ignore errors here because we strictly rely on the verification step)
+            await supabase.from('comments').insert([newComment]);
+
+            // Wait a moment for database consistency
+            await new Promise(r => setTimeout(r, 1000));
+
+            // Verify if it exists
+            const { data, error } = await supabase.from('comments').select('id').eq('id', customId);
+            if (!error && data && data.length > 0) {
+                isSaved = true;
+            }
+        }
+
+        if (!isSaved) {
+            throw new Error("Failed to verify comment saving after maximum attempts.");
+        }
+
+        // 4. Check for duplicates (same date, name, text) and delete extras
+        const { data: duplicates } = await supabase.from('comments')
+            .select('id')
+            .eq('date', selectedDateStr)
+            .eq('name', name)
+            .eq('text', text)
+            .order('timestamp', { ascending: true });
+
+        if (duplicates && duplicates.length > 1) {
+            // Keep the first one, delete the rest
+            const idsToDelete = duplicates.slice(1).map(d => d.id);
+            for (const dupId of idsToDelete) {
+                await supabase.from('comments').delete().eq('id', dupId);
+            }
+            console.log(`Cleaned up ${idsToDelete.length} duplicate(s).`);
+        }
+
         await logHistory('added', `"${name}" added a comment on ${selectedDateStr}`);
         
-        // Reset form only on success
-        nameInput.value = '';
-        textInput.value = '';
-        colorInput.value = 'none';
+        // 5. Refresh the page to show the confirmed database state
+        window.location.reload();
+
     } catch (error) {
         console.error("Error adding comment: ", error);
         alert("Database Error (Add Comment): " + (error.message || JSON.stringify(error)));
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Post';
     }
 });
 
