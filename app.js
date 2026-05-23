@@ -392,7 +392,9 @@ async function deleteComment(comment) {
 async function logHistory(action, description) {
     if (!supabase) return;
     try {
+        const historyId = encodeURIComponent(`hist_${action}_${Date.now()}_${Math.random()}`);
         const { error } = await supabase.from('history').insert([{
+            id: historyId,
             action: action,
             timestamp: Date.now(),
             month: currentMonthYearStr,
