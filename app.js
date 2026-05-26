@@ -97,7 +97,9 @@ function renderCalendar() {
     calendarGrid.innerHTML = '';
     const firstDay = new Date(currentYear, currentMonth, 1);
     const lastDay = new Date(currentYear, currentMonth + 1, 0);
-    const startDayIndex = firstDay.getDay(); // 0 is Sunday
+    // getDay() returns 0 for Sunday, 1 for Monday, etc.
+    // If week starts on Monday, Monday is 0 index, Sunday is 6.
+    const startDayIndex = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
     const totalDays = lastDay.getDate();
 
     const monthNames = ["January", "February", "March", "April", "May", "June",
